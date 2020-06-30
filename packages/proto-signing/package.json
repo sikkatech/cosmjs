@@ -49,6 +49,7 @@
   "devDependencies": {
     "@cosmjs/encoding": "^0.22.0",
     "@cosmjs/launchpad": "^0.22.0",
+    "@cosmjs/tendermint-rpc": "^0.22.0",
     "@cosmjs/utils": "^0.22.0"
   }
 }
