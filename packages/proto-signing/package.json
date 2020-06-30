@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@cosmjs/launchpad": "^0.22.0",
+    "@cosmjs/tendermint-rpc": "^0.22.0",
     "protobufjs": "~6.10.0"
   },
   "devDependencies": {
