@@ -44,6 +44,7 @@
     "postdefine-proto": "prettier --write \"src/generated/codecimpl.*\""
   },
   "dependencies": {
+    "@cosmjs/launchpad": "^0.22.0",
     "protobufjs": "~6.10.0"
   },
   "devDependencies": {
