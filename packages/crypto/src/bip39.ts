@@ -38,8 +38,7 @@ export class Bip39 {
     digest: string,
   ): Promise<Uint8Array> {
     return new Promise<any>((resolve, reject) => {
-      // TODO: Patch @types/pbkdf2 to allow Uint8Array as secret and salt argument
-      pbkdf2(Buffer.from(secret), Buffer.from(salt), iterations, keylen, digest, (err, derivedKey) => {
+      pbkdf2(secret, salt, iterations, keylen, digest, (err, derivedKey) => {
         if (err) {
           reject(err);
         } else {
