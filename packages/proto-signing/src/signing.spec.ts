@@ -31,7 +31,6 @@ const faucet = {
   address: "cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6",
 };
 
-
 fdescribe("query account", () => {
   it("decode account data for a genesis account", async () => {
     pendingWithoutSimapp();
@@ -58,13 +57,13 @@ fdescribe("query account", () => {
     expect(resp.key).toEqual(accountKey);
 
     const envelope = google.protobuf.Any.decode(resp.value);
-    expect(envelope.type_url).toEqual('/cosmos.auth.BaseAccount');
+    expect(envelope.type_url).toEqual("/cosmos.auth.BaseAccount");
     const account = BaseAccount.decode(envelope.value);
 
     expect(account.address).toEqual(binAddress);
     expect(account.account_number).toEqual(Long.fromInt(1, true));
     expect(account.sequence).toEqual(Long.fromInt(0, true));
-  })
+  });
 
   it("decode bank data for a genesis account", async () => {
     pendingWithoutSimapp();
@@ -100,10 +99,59 @@ fdescribe("query account", () => {
     console.log(balance);
     expect(balance.denom).toEqual("ucosm");
     expect(balance.amount).toEqual("1000000000");
-  })
+  });
 });
 
-describe("signing demo", () => {
+// Test Vectors
+// simd tx bank send --sign-mode direct --chain-id simd-testing testgen cosmos1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu 1234567ucosm -b block
+// (with my custom fork with Printfs)
+//
+const signedTxBytesSeq0 =
+  "0a580a560a142f636f736d6f732e62616e6b2e4d736753656e64123e0a140d82b1e7c96dbfa42462fe612932e6bff111d51b12140102030405060708090a0b0c0d0e0f10111213141a100a0575636f736d12073132333435363712330a2b0a230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a020801120410c09a0c1a40692d88f681d5d69924a53668e8ecec535ca0ca170d1febfb1dd87de9959b07340427d6bba22526d6c30cc622f27dc5eb1ce04cfc0ff98716154066ec69db62e5";
+const signedTxBytesSeq1 =
+  "0a580a560a142f636f736d6f732e62616e6b2e4d736753656e64123e0a140d82b1e7c96dbfa42462fe612932e6bff111d51b12140102030405060708090a0b0c0d0e0f10111213141a100a0575636f736d12073132333435363712330a2b0a230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a020801120410c09a0c1a40811c3c7dd85b1478b15e3cc710503045559d805d2bf538e5015dbcd868a440a94c7fc0b12b755a838cc3f9b8245d9f926e0432d07ee97557cff7c50c73f64a58";
+const signedTxBytesSeq2 =
+  "0a580a560a142f636f736d6f732e62616e6b2e4d736753656e64123e0a140d82b1e7c96dbfa42462fe612932e6bff111d51b12140102030405060708090a0b0c0d0e0f10111213141a100a0575636f736d12073132333435363712330a2b0a230a21034f04181eeba35391b858633a765c4a0c189697b40d216354d50890d350c7029012040a020801120410c09a0c1a405e2e11567c181db4f38788ff6d417b1f7d147f3d6bd8274989bf181c35b3fb97218f64172030dd5a84dd38933765609d70771cbba60168d8ded611f14ec4fb12";
+
+fdescribe("signing demo", () => {
+  it("document generate test vectors", async () => {
+    const chainId = "simd-testing";
+
+    const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
+    const [{ address, pubkey: pubkeyBytes }] = await wallet.getAccounts();
+
+    const msgSendFields = {
+      fromAddress: Bech32.decode(address).data,
+      toAddress: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+      amount: coins(1234567, "ucosm"),
+    };
+
+    // To generate the test tx from cosmos-SDK
+    console.log("To generate test vectors:");
+    console.log("Unsigned tx with exact same accounts:");
+    console.log(
+      `simd tx bank send --generate-only --offline --chain-id ${chainId} ${address} ${Bech32.encode(
+        "cosmos",
+        msgSendFields.toAddress,
+      )} 1234567ucosm`,
+    );
+    console.log("");
+    console.log("Signed tx with local account:");
+    console.log("simd keys add -i testgen");
+    console.log(faucet.mnemonic);
+    console.log("");
+    console.log("simd keys show -a testgen");
+    console.log(`Should give ${address}`);
+    console.log("");
+    console.log("This doesn't seem to work.... but should sign without broadcast");
+    console.log(
+      `simd tx bank send --offline --chain-id ${chainId} -a 1 testgen ${Bech32.encode(
+        "cosmos",
+        msgSendFields.toAddress,
+      )} 1234567ucosm`,
+    );
+  });
+
   it("creates a SignDoc and a TxRaw", async () => {
     pendingWithoutSimapp();
     const tendermintUrl = "localhost:26657";
@@ -123,6 +171,7 @@ describe("signing demo", () => {
       toAddress: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
       amount: coins(1234567, "ucosm"),
     };
+
     const txBodyFields: TxBodyValue = {
       messages: [{ typeUrl: "/cosmos.bank.MsgSend", value: msgSendFields }],
       memo: "Some memo",
