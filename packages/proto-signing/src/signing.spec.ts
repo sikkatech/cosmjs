@@ -1,3 +1,5 @@
+import Long from "long";
+
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Bech32, fromBase64, toHex, fromUtf8 } from "@cosmjs/encoding";
 import { coins, Secp256k1Wallet } from "@cosmjs/launchpad";
@@ -6,7 +8,8 @@ import { assert } from "@cosmjs/utils";
 // import { Message } from "protobufjs";
 
 // import { cosmosField, cosmosMessage } from "./decorator";
-import { cosmos } from "./generated/codecimpl";
+import { cosmos, google } from "./generated/codecimpl";
+import { BaseAccount } from "./msgs";
 import { Registry, TxBodyValue } from "./registry";
 
 const { AuthInfo, SignDoc, Tx, TxBody } = cosmos.tx;
@@ -28,6 +31,7 @@ const faucet = {
   address: "cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6",
 };
 
+
 fdescribe("query account", () => {
   it("gets some bytes for a genesis account", async () => {
     pendingWithoutSimapp();
@@ -37,11 +41,10 @@ fdescribe("query account", () => {
 
     const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
     const [{ address }] = await wallet.getAccounts();
-    console.log(address);
-    const fromAddress = Bech32.decode(address).data;
+    const binAddress = Bech32.decode(address).data;
 
     // https://github.com/cosmos/cosmos-sdk/blob/8cab43c8120fec5200c3459cbf4a92017bb6f287/x/auth/types/keys.go#L29-L32
-    const accountKey = Uint8Array.from([1, ...fromAddress]);
+    const accountKey = Uint8Array.from([1, ...binAddress]);
 
     const resp = await client.abciQuery({
       // we need the StoreKey for the module, not the module name
@@ -53,10 +56,15 @@ fdescribe("query account", () => {
 
     assert(!resp.code);
     expect(resp.key).toEqual(accountKey);
-    console.log(toHex(accountKey));
 
-    const data = resp.value;
-    console.log(toHex(data));
+    const envelope = google.protobuf.Any.decode(resp.value);
+    expect(envelope.type_url).toEqual('/cosmos.auth.BaseAccount');
+    const account = BaseAccount.decode(envelope.value);
+    console.log(account);
+
+    expect(account.address).toEqual(binAddress);
+    expect(account.account_number).toEqual(Long.fromInt(1, true));
+    expect(account.sequence).toEqual(Long.fromInt(0, true));
   })
 });
 
