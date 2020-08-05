@@ -1,7 +1,7 @@
 import Long from "long";
 
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Bech32, fromBase64, toHex, fromUtf8 } from "@cosmjs/encoding";
+import { Bech32, fromBase64, toHex, fromUtf8, toAscii } from "@cosmjs/encoding";
 import { coins, Secp256k1Wallet } from "@cosmjs/launchpad";
 import { Client } from "@cosmjs/tendermint-rpc";
 import { assert } from "@cosmjs/utils";
@@ -9,7 +9,7 @@ import { assert } from "@cosmjs/utils";
 
 // import { cosmosField, cosmosMessage } from "./decorator";
 import { cosmos, google } from "./generated/codecimpl";
-import { BaseAccount } from "./msgs";
+import { BaseAccount, Coin } from "./msgs";
 import { Registry, TxBodyValue } from "./registry";
 
 const { AuthInfo, SignDoc, Tx, TxBody } = cosmos.tx;
@@ -33,7 +33,7 @@ const faucet = {
 
 
 fdescribe("query account", () => {
-  it("gets some bytes for a genesis account", async () => {
+  it("decode account data for a genesis account", async () => {
     pendingWithoutSimapp();
     const tendermintUrl = "localhost:26657";
     const client = await Client.connect(tendermintUrl);
@@ -60,11 +60,46 @@ fdescribe("query account", () => {
     const envelope = google.protobuf.Any.decode(resp.value);
     expect(envelope.type_url).toEqual('/cosmos.auth.BaseAccount');
     const account = BaseAccount.decode(envelope.value);
-    console.log(account);
 
     expect(account.address).toEqual(binAddress);
     expect(account.account_number).toEqual(Long.fromInt(1, true));
     expect(account.sequence).toEqual(Long.fromInt(0, true));
+  })
+
+  it("decode bank data for a genesis account", async () => {
+    pendingWithoutSimapp();
+    const tendermintUrl = "localhost:26657";
+    const client = await Client.connect(tendermintUrl);
+    const chainId = "simd-testing";
+
+    const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
+    const [{ address }] = await wallet.getAccounts();
+    const binAddress = Bech32.decode(address).data;
+
+    // balance key is a bit tricker, using some prefix stores
+    // https://github.com/cosmwasm/cosmos-sdk/blob/80f7ff62f79777a487d0c7a53c64b0f7e43c47b9/x/bank/keeper/view.go#L74-L77
+    // ("balances", binAddress, denom)
+    // it seem like prefix stores just do a dumb concat with the keys (no tricks to avoid overlap)
+    // https://github.com/cosmos/cosmos-sdk/blob/2879c0702c87dc9dd828a8c42b9224dc054e28ad/store/prefix/store.go#L61-L64
+    // https://github.com/cosmos/cosmos-sdk/blob/2879c0702c87dc9dd828a8c42b9224dc054e28ad/store/prefix/store.go#L37-L43
+    const bankKey = Uint8Array.from([...toAscii("balances"), ...binAddress, ...toAscii("ucosm")]);
+
+    const resp = await client.abciQuery({
+      // we need the StoreKey for the module, in this case same as module name
+      // https://github.com/cosmos/cosmos-sdk/blob/5a7e22022cc9dd2e2f9ea72742f3cf1444fe889a/x/bank/types/key.go#L14
+      path: "/store/bank/key",
+      data: bankKey,
+      prove: false,
+    });
+
+    assert(!resp.code);
+    expect(resp.key).toEqual(bankKey);
+    expect(resp.value).toBeDefined();
+
+    const balance = Coin.decode(resp.value);
+    console.log(balance);
+    expect(balance.denom).toEqual("ucosm");
+    expect(balance.amount).toEqual("1000000000");
   })
 });
 
