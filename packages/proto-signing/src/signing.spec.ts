@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { Bech32, fromBase64 } from "@cosmjs/encoding";
+import { Bech32, fromBase64, toHex, fromUtf8 } from "@cosmjs/encoding";
 import { coins, Secp256k1Wallet } from "@cosmjs/launchpad";
 import { Client } from "@cosmjs/tendermint-rpc";
+import { assert } from "@cosmjs/utils";
 // import { Message } from "protobufjs";
 
 // import { cosmosField, cosmosMessage } from "./decorator";
@@ -13,7 +14,7 @@ const { PublicKey } = cosmos.crypto;
 
 export function pendingWithoutSimapp(): void {
   if (!process.env.SIMAPP_ENABLED) {
-    return pending("Set WASMD_ENABLED to enable Simapp based tests");
+    return pending("Set SIMAPP_ENABLED to enable Simapp based tests");
   }
 }
 
@@ -27,7 +28,39 @@ const faucet = {
   address: "cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6",
 };
 
-fdescribe("signing demo", () => {
+fdescribe("query account", () => {
+  it("gets some bytes for a genesis account", async () => {
+    pendingWithoutSimapp();
+    const tendermintUrl = "localhost:26657";
+    const client = await Client.connect(tendermintUrl);
+    const chainId = "simd-testing";
+
+    const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
+    const [{ address }] = await wallet.getAccounts();
+    console.log(address);
+    const fromAddress = Bech32.decode(address).data;
+
+    // https://github.com/cosmos/cosmos-sdk/blob/8cab43c8120fec5200c3459cbf4a92017bb6f287/x/auth/types/keys.go#L29-L32
+    const accountKey = Uint8Array.from([1, ...fromAddress]);
+
+    const resp = await client.abciQuery({
+      // we need the StoreKey for the module, not the module name
+      // https://github.com/cosmos/cosmos-sdk/blob/8cab43c8120fec5200c3459cbf4a92017bb6f287/x/auth/types/keys.go#L12
+      path: "/store/acc/key",
+      data: accountKey,
+      prove: false,
+    });
+
+    assert(!resp.code);
+    expect(resp.key).toEqual(accountKey);
+    console.log(toHex(accountKey));
+
+    const data = resp.value;
+    console.log(toHex(data));
+  })
+});
+
+describe("signing demo", () => {
   it("creates a SignDoc and a TxRaw", async () => {
     pendingWithoutSimapp();
     const tendermintUrl = "localhost:26657";
