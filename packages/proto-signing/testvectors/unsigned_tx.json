@@ -1,0 +1,1 @@
+{"body":{"messages":[{"@type":"/cosmos.bank.MsgSend","from_address":"cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6","to_address":"cosmos1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5lzv7xu","amount":[{"denom":"ucosm","amount":"1234567"}]}]},"auth_info":{"fee":{"gas_limit":"200000"}}}

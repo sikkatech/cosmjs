@@ -130,10 +130,10 @@ fdescribe("signing demo", () => {
     console.log("To generate test vectors:");
     console.log("Unsigned tx with exact same accounts:");
     console.log(
-      `simd tx bank send --generate-only --offline --chain-id ${chainId} ${address} ${Bech32.encode(
+      `simd tx bank send --generate-only --chain-id ${chainId} ${address} ${Bech32.encode(
         "cosmos",
         msgSendFields.toAddress,
-      )} 1234567ucosm`,
+      )} 1234567ucosm > unsigned_tx.json`,
     );
     console.log("");
     console.log("Signed tx with local account:");
@@ -143,12 +143,15 @@ fdescribe("signing demo", () => {
     console.log("simd keys show -a testgen");
     console.log(`Should give ${address}`);
     console.log("");
-    console.log("This doesn't seem to work.... but should sign without broadcast");
+    console.log("Should work from nightly-2020-08-07 onwards:");
     console.log(
-      `simd tx bank send --offline --chain-id ${chainId} -a 1 testgen ${Bech32.encode(
-        "cosmos",
-        msgSendFields.toAddress,
-      )} 1234567ucosm`,
+      `simd tx sign --from testgen --chain-id ${chainId} --sign-mode direct unsigned_tx.json > signed_tx.json`,
+    );
+    console.log(
+      `simd tx sign --offline -a 1 -s 1 --from testgen --chain-id ${chainId} --sign-mode direct unsigned_tx.json > signed_tx_seq1.json`,
+    );
+    console.log(
+      `simd tx sign --offline -a 1 -s 2 --from testgen --chain-id ${chainId} --sign-mode direct unsigned_tx.json > signed_tx_seq2.json`,
     );
   });
 
