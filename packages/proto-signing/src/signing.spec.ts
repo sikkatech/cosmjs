@@ -54,6 +54,11 @@ const signatureSeq2 =
 
 fdescribe("signing demo", () => {
   const chainId = "simd-testing";
+  const toAddress = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+
+  const sendAmount = "1234567";
+  const sendDenom = "ucosm";
+  const gasLimit = 200000;
 
   it("document generate test vectors", async () => {
     const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
@@ -91,7 +96,7 @@ fdescribe("signing demo", () => {
     );
   });
 
-  fit("correctly parses and generates test vectors", async () => {
+  fit("correctly parses test vectors", async () => {
     const myRegistry = new Registry();
     const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
     const [{ address, pubkey: pubkeyBytes }] = await wallet.getAccounts();
@@ -108,7 +113,7 @@ fdescribe("signing demo", () => {
     expect(parsedTestTx.authInfo?.signerInfos![0].publicKey!.secp256k1).toEqual(pubkeyBytes);
     expect(parsedTestTx.authInfo?.signerInfos![0].modeInfo!.single!.mode).toEqual(1);
     expect(parsedTestTx.authInfo?.fee!.amount).toEqual([]);
-    expect(parsedTestTx.authInfo?.fee!.gasLimit!.toString()).toEqual("200000");
+    expect(parsedTestTx.authInfo?.fee!.gasLimit!.toString()).toEqual(gasLimit.toString());
     expect(parsedTestTx.body?.extensionOptions).toEqual([]);
     expect(parsedTestTx.body?.nonCriticalExtensionOptions).toEqual([]);
     expect(parsedTestTx.body!.messages!.length).toEqual(1);
@@ -122,20 +127,29 @@ fdescribe("signing demo", () => {
       Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
     );
     expect(parsedTestTxMsg.amount.length).toEqual(1);
-    expect(parsedTestTxMsg.amount[0].denom).toEqual("ucosm");
-    expect(parsedTestTxMsg.amount[0].amount).toEqual("1234567");
+    expect(parsedTestTxMsg.amount[0].denom).toEqual(sendDenom);
+    expect(parsedTestTxMsg.amount[0].amount).toEqual(sendAmount);
+  });
+
+  fit("correctly generates test vectors", async () => {
+    const myRegistry = new Registry();
+    const wallet = await Secp256k1Wallet.fromMnemonic(faucet.mnemonic);
+    const [{ address, pubkey: pubkeyBytes }] = await wallet.getAccounts();
+    const publicKey = PublicKey.create({
+      secp256k1: pubkeyBytes,
+    });
 
     const txBodyFields: TxBodyValue = {
       messages: [
         {
           typeUrl: "/cosmos.bank.MsgSend",
           value: {
-            fromAddress: parsedTestTxMsg.from_address,
-            toAddress: parsedTestTxMsg.to_address,
+            fromAddress: Bech32.decode(address).data,
+            toAddress: toAddress,
             amount: [
               {
-                denom: parsedTestTxMsg.amount[0].denom,
-                amount: parsedTestTxMsg.amount[0].amount,
+                denom: sendDenom,
+                amount: sendAmount,
               },
             ],
           },
@@ -160,12 +174,12 @@ fdescribe("signing demo", () => {
         },
       ],
       fee: {
-        gasLimit: parsedTestTx.authInfo?.fee?.gasLimit,
+        gasLimit: gasLimit,
       },
     };
     const authInfoBytes = Uint8Array.from(AuthInfo.encode(authInfo).finish());
     const accountNumber = 1;
-    const sequence = 0;
+    const sequence = undefined; // go doesn't encode 0's
     const signDoc = SignDoc.create({
       bodyBytes: txBodyBytes,
       authInfoBytes: authInfoBytes,
