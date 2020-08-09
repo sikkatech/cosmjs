@@ -4,6 +4,7 @@ import { coins, Secp256k1Wallet } from "@cosmjs/launchpad";
 import { Client } from "@cosmjs/tendermint-rpc";
 import { assert } from "@cosmjs/utils";
 
+import { omitDefault } from "./adr27";
 import { cosmos } from "./generated/codecimpl";
 import { defaultRegistry } from "./msgs";
 import { DecodeObject, Registry, TxBodyValue } from "./registry";
@@ -179,13 +180,13 @@ fdescribe("signing demo", () => {
     };
     const authInfoBytes = Uint8Array.from(AuthInfo.encode(authInfo).finish());
     const accountNumber = 1;
-    const sequence = undefined; // go doesn't encode 0's
+    const sequence = 0;
     const signDoc = SignDoc.create({
-      bodyBytes: txBodyBytes,
-      authInfoBytes: authInfoBytes,
-      chainId: chainId,
-      accountNumber: accountNumber,
-      accountSequence: sequence,
+      bodyBytes: omitDefault(txBodyBytes),
+      authInfoBytes: omitDefault(authInfoBytes),
+      chainId: omitDefault(chainId),
+      accountNumber: omitDefault(accountNumber),
+      accountSequence: omitDefault(sequence),
     });
     // console.log(signDoc);
 
